@@ -53,15 +53,17 @@ class ModelFormWithInlinesMixin(ModelFormMixin):
         """
         self.object = form.save()
         for formset in inlines:
-            for form in formset:
-                # Ignore empty forms
+            objects = formset.save(commit=False)
+            for i in xrange(len(formset)):
+                form = formset[i]
                 if form.has_changed():
-                    form_instance = form.save(commit=False)
-                    if getattr(form_instance, self.orderfield):
-                        form_order = form.cleaned_data.get('ORDER',None)
-                        if form_order:
-                            setattr(form_instance, self.orderfield, form_order)
-                    form_instance.save()
+                    instance = objects[i]
+                    if getattr(instance, self.orderfield):
+                        order = form.cleaned_data.get('ORDER', None)
+                        if order:
+                            setattr(instance, self.orderfield, order)
+                            instance.save()
+            formset.save()
         return HttpResponseRedirect(self.get_success_url())
 
     def forms_invalid(self, form, inlines):
