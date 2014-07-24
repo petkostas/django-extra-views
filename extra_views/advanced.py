@@ -35,6 +35,7 @@ class ModelFormWithInlinesMixin(ModelFormMixin):
     formsets in a request.
     """
     inlines = []
+    orderfield = '_order'
 
     def get_inlines(self):
         """
@@ -45,10 +46,22 @@ class ModelFormWithInlinesMixin(ModelFormMixin):
     def forms_valid(self, form, inlines):
         """
         If the form and formsets are valid, save the associated models.
+        Additionally if we have an ordering field, and the field exists 
+        add the ordering of the forms.
+        This should be used with order_with_respect_to to create nicely ordered
+        inlines.
         """
         self.object = form.save()
         for formset in inlines:
-            formset.save()
+            for form in formset:
+                # Ignore empty forms
+                if form.has_changed():
+                    form_instance = form.save(commit=False)
+                    if getattr(form_instance, self.orderfield):
+                        form_order = form.cleaned_data.get('ORDER',None)
+                        if form_order:
+                            setattr(form_instance, self.orderfield, form_order)
+                    form_instance.save()
         return HttpResponseRedirect(self.get_success_url())
 
     def forms_invalid(self, form, inlines):
